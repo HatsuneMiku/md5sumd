@@ -14,6 +14,7 @@ private import std.stdio;
 private import std.string;
 private import std.conv;
 private import std.array;
+private import std.path;
 private import std.file;
 private import std.socket;
 private import std.datetime;
@@ -116,10 +117,33 @@ void md5sumr(string p)
     if(!isDir(p)){
       writefln("%s %s", md5sumf(p), p);
     }else{
-      foreach(DirEntry e; dirEntries(p, SpanMode.depth)){
+      /*
+        注: SpanMode.depth だと subdir\filename の後に subdir が表示される。
+        SpanMode.breadth を使うと dirName が先に取り出せるので有利に思えるが、
+        python の os.walk と違って file と directory が混在するため、
+        subdir から戻った後に表示される元の階層の file が subdir と錯覚する。
+        os.walk のような順 (directory だけ先に処理) で表示したい場合、
+        自分で isDir に応じて再帰関数を作ることになるが、上の問題は解決しない。
+        また、再帰関数を使うとスタックの心配も出て来るのでメリットが殆どない。
+        結論: SpanMode.depth でも SpanMode.breadth でもどちらを使っても同じで、
+        dirName を毎回チェックして、前回と異なる場合のみ表示するタイプで実装。
+      */
+      string prev = p;
+      writefln("dir: %s", prev);
+      foreach(DirEntry e; dirEntries(p, SpanMode.depth)){ // SpanMode.breadth
         string f = e.name;
-        if(isDir(f)) continue;
-        writefln("%s %15d %s", md5sumf(f), e.size, f);
+        if(e.isSymlink) writefln("sym: %s", f);
+        else if(e.isDir) continue; // writefln("dir: %s", f); // 上記注
+        else{
+          string d = dirName(f);
+          if(d != prev){
+            prev = d;
+            writefln("dir: %s", prev);
+          }
+          string b = baseName(f);
+          writefln("%s %-15s %12d %s",
+            md5sumf(f), e.timeLastModified.toISOString()[0..15], e.size, b);
+        }
       }
     }
   }catch(FileException e){
@@ -139,7 +163,7 @@ int main(string[] args)
   }
   foreach(int i, string arg; args){
     writefln("arg[%d] = '%s'", i, arg);
-    md5sumr(arg);
+    md5sumr(buildNormalizedPath(absolutePath(arg)));
   }
   return 0;
 }
