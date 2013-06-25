@@ -115,7 +115,7 @@ void md5sumr(string p)
       return;
     }
     if(!isDir(p)){
-      writefln("%s %s", md5sumf(p), p);
+      writefln("%s %s", md5sumf(p), p); // ここは stripDrive() しない
     }else{
       /*
         注: SpanMode.depth だと subdir\filename の後に subdir が表示される。
@@ -129,16 +129,16 @@ void md5sumr(string p)
         dirName を毎回チェックして、前回と異なる場合のみ表示するタイプで実装。
       */
       string prev = p;
-      writefln("dir: %s", prev);
+      writefln("dir: %s", prev); // ここは stripDrive() しない
       foreach(DirEntry e; dirEntries(p, SpanMode.depth)){ // SpanMode.breadth
         string f = e.name;
-        if(e.isSymlink) writefln("sym: %s", f);
+        if(e.isSymlink) writefln("sym: %s", f); // ここは stripDrive() しない
         else if(e.isDir) continue; // writefln("dir: %s", f); // 上記注
         else{
           string d = dirName(f);
           if(d != prev){
             prev = d;
-            writefln("dir: %s", prev);
+            writefln("dir: %s", stripDrive(prev)); // 比較のため stripDrive()
           }
           string b = baseName(f);
           writefln("%s %-15s %12d %s",
